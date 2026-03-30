@@ -28,6 +28,7 @@ global g_EditTypes         := []
 global g_IsEditingExisting := false
 global g_EditingBookIdx    := 0
 global g_EditingRecipeIdx  := 0
+global g_EditTotalAmount   := 0
 
 ; ==================== STARTUP ====================
 LoadData()
@@ -68,6 +69,8 @@ EncodeData(books) {
             for t in recipe.types
                 typesStr .= t ","
             result .= "RECIPE_TYPES:" RTrim(typesStr, ",") "`n"
+            if recipe.HasProp("totalAmount")
+                result .= "RECIPE_TOTAL:" recipe.totalAmount "`n"
             for ing in recipe.ingredients {
                 result .= "ING_NAME:" EscLine(ing.name) "`n"
                 result .= "ING_AMT:"  ing.amount "`n"
@@ -131,7 +134,7 @@ DecodeData(content) {
                 currentBook.description := UnescLine(SubStr(line, 11))
 
         } else if SubStr(line, 1, 12) = "RECIPE_NAME:" {
-            currentRecipe := { name: UnescLine(SubStr(line, 13)), description: "", types: [], ingredients: [] }
+            currentRecipe := { name: UnescLine(SubStr(line, 13)), description: "", types: [], ingredients: [], totalAmount: 0 }
 
         } else if SubStr(line, 1, 12) = "RECIPE_DESC:" {
             if IsObject(currentRecipe)
@@ -143,6 +146,10 @@ DecodeData(content) {
                     if Trim(t) != ""
                         currentRecipe.types.Push(Trim(t))
             }
+
+        } else if SubStr(line, 1, 12) = "RECIPE_TOTAL:" {
+            if IsObject(currentRecipe)
+                currentRecipe.totalAmount := Integer(Trim(SubStr(line, 13)))
 
         } else if SubStr(line, 1, 9) = "ING_NAME:" {
             if IsObject(currentRecipe)
@@ -175,6 +182,8 @@ DecodeData(content) {
 ; ======================================================================
 
 GetTotalUnits(recipe) {
+    if recipe.HasProp("totalAmount") && recipe.totalAmount > 0
+        return recipe.totalAmount
     total := 0
     for ing in recipe.ingredients
         total += ing.amount
@@ -277,10 +286,12 @@ ShowIngredientEditor(recipeName, isEditing, bookIdx := 0, recipeIdx := 0) {
         g_EditIngredients := CloneIngredients(recipe.ingredients)
         g_EditDescription := recipe.description
         g_EditTypes       := CloneArray(recipe.types)
+        g_EditTotalAmount := recipe.HasProp("totalAmount") ? recipe.totalAmount : 0
     } else {
         g_EditIngredients := []
         g_EditDescription := ""
         g_EditTypes       := []
+        g_EditTotalAmount := 0
     }
 
     DrawIngredientEditor()
@@ -353,6 +364,11 @@ DrawIngredientEditor() {
     descLabel := (g_EditDescription != "") ? "Description (set)" : "Description"
     btnDesc := g_IngEditorGui.Add("Button", "x356 y" y " w135 h30", descLabel)
     btnDesc.OnEvent("Click", (*) => ShowDescriptionEditor())
+
+    y += 40
+    totalLabel := (g_EditTotalAmount > 0) ? "Total: " g_EditTotalAmount "u" : "Total: Auto"
+    btnTotal := g_IngEditorGui.Add("Button", "x356 y" y " w135 h30", totalLabel)
+    btnTotal.OnEvent("Click", (*) => ShowTotalEditor())
 
     y += 40
     g_IngEditorGui.Add("Text", "x10 y" y " w560 h2 0x10")
@@ -524,7 +540,7 @@ ShowDescriptionEditor() {
     g_DescGui.Add("Text", "x10 y35 w380", "Optional — describe this recipe and its uses")
 
     g_DescGui.SetFont("s10 cFFFFFF", "Segoe UI")
-    editCtrl := g_DescGui.Add("Edit", "x10 y58 w380 h140 Multi WantReturn", g_EditDescription)
+    editCtrl := g_DescGui.Add("Edit", "x10 y58 w380 h140 Multi WantReturn +Background2A2A3E", g_EditDescription)
 
     btnSave   := g_DescGui.Add("Button", "x10  y208 w180 h30", "Save")
     btnCancel := g_DescGui.Add("Button", "x200 y208 w180 h30", "Cancel")
@@ -540,6 +556,16 @@ DescSave_Handler(editCtrl, *) {
     g_EditDescription := editCtrl.Value
     g_DescGui.Destroy()
     g_DescGui := ""
+}
+
+ShowTotalEditor() {
+    global g_EditTotalAmount
+    r := InputBox("Set total amount (leave empty for auto-calculated):", "Total Amount", "w350 h130", g_EditTotalAmount)
+    if r.Result = "OK" {
+        val := Trim(r.Value)
+        g_EditTotalAmount := val = "" ? 0 : (IsInteger(val) ? Integer(val) : 0)
+        DrawIngredientEditor()
+    }
 }
 
 ; ---------- Save recipe ----------
@@ -570,7 +596,8 @@ IngEditorSave() {
         name:        g_EditRecipeName,
         description: g_EditDescription,
         types:       CloneArray(g_EditTypes),
-        ingredients: CloneIngredients(g_EditIngredients)
+        ingredients: CloneIngredients(g_EditIngredients),
+        totalAmount: g_EditTotalAmount
     }
 
     ; Updating an existing recipe
@@ -707,7 +734,7 @@ ShowRecipeBookPage() {
     ; ── Search & Filter ────────────────────────────────────────────────
     y := 50
     g_MainGui.Add("Text", "x8 y" (y+4) " w55 cCCCCCC", "Search:")
-    searchEdit := g_MainGui.Add("Edit", "x67 y" y " w230 h25", g_SearchText)
+    searchEdit := g_MainGui.Add("Edit", "x67 y" y " w230 h25 +Background1E1E2E", g_SearchText)
 
     btnSearch := g_MainGui.Add("Button", "x302 y" y " w60 h25", "Search")
     btnClearS := g_MainGui.Add("Button", "x367 y" y " w50 h25", "Clear")
@@ -948,7 +975,7 @@ EditBookDescription() {
     g_BookDescGui.Add("Text", "x10 y35 w380", "Optional description — useful for sharing recipe books")
 
     g_BookDescGui.SetFont("s10 cFFFFFF", "Segoe UI")
-    editCtrl := g_BookDescGui.Add("Edit", "x10 y58 w380 h140 Multi WantReturn", book.description)
+    editCtrl := g_BookDescGui.Add("Edit", "x10 y58 w380 h140 Multi WantReturn +Background2A2A3E", book.description)
 
     btnSave   := g_BookDescGui.Add("Button", "x10  y208 w180 h30", "Save & Close")
     btnCancel := g_BookDescGui.Add("Button", "x200 y208 w180 h30", "Cancel")
@@ -973,7 +1000,7 @@ ExportBook() {
     ; [\\/:*?"<>|] covers all characters invalid in Windows filenames.
     ; \\ in an AHK string is two literal backslashes, which the regex engine
     ; interprets as an escaped backslash — matching one literal \ character.
-    safeName := RegExReplace(book.name, "[\\/:*?""<>|]", "_")
+    safeName := RegExReplace(book.name, "[\\/:*?`"<>`|]", "_")
 
     savePath := FileSelect("S8", A_MyDocuments "\" safeName ".cmp", "Export Recipe Book", "ChemMasterPro Files (*.cmp)")
     if savePath = ""

@@ -1,0 +1,10 @@
+BOOK_NAME:Divinity
+BOOK_DESC:
+RECIPE_NAME:cheese
+RECIPE_DESC:This is cheese you eat this yas
+RECIPE_TYPES:Toxin
+RECIPE_TOTAL:15
+ING_NAME:boogers
+ING_AMT:5
+ENDRECIPE
+ENDBOOK
