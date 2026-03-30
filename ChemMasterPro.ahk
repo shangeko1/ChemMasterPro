@@ -970,6 +970,9 @@ BookDescSave_Handler(editCtrl, *) {
 ExportBook() {
     global g_RecipeBooks, g_CurrentBookIdx
     book     := g_RecipeBooks[g_CurrentBookIdx]
+    ; [\\/:*?"<>|] covers all characters invalid in Windows filenames.
+    ; \\ in an AHK string is two literal backslashes, which the regex engine
+    ; interprets as an escaped backslash — matching one literal \ character.
     safeName := RegExReplace(book.name, "[\\/:*?""<>|]", "_")
 
     savePath := FileSelect("S8", A_MyDocuments "\" safeName ".cmp", "Export Recipe Book", "ChemMasterPro Files (*.cmp)")
@@ -978,8 +981,12 @@ ExportBook() {
 
     content := "CHMASTERPRO_EXPORT_V1`n" EncodeData([book])
     try FileDelete(savePath)
-    FileAppend(content, savePath)
-    MsgBox("Recipe book exported successfully!`n`nFile: " savePath, "Export Complete", "Iconi")
+    try {
+        FileAppend(content, savePath)
+        MsgBox("Recipe book exported successfully!`n`nFile: " savePath, "Export Complete", "Iconi")
+    } catch as e {
+        MsgBox("Failed to write export file:`n" e.Message, "Export Error", "Iconx")
+    }
 }
 
 ClearBook() {
