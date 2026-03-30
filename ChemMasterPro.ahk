@@ -149,8 +149,10 @@ DecodeData(content) {
                 currentRecipe.ingredients.Push({ name: UnescLine(SubStr(line, 10)), amount: 0 })
 
         } else if SubStr(line, 1, 8) = "ING_AMT:" {
-            if IsObject(currentRecipe) && currentRecipe.ingredients.Length > 0
-                currentRecipe.ingredients[currentRecipe.ingredients.Length].amount := Integer(SubStr(line, 9))
+            if IsObject(currentRecipe) && currentRecipe.ingredients.Length > 0 {
+                rawAmt := Trim(SubStr(line, 9))
+                currentRecipe.ingredients[currentRecipe.ingredients.Length].amount := IsInteger(rawAmt) ? Integer(rawAmt) : 0
+            }
 
         } else if line = "ENDRECIPE" {
             if IsObject(currentRecipe) && IsObject(currentBook) {
@@ -344,7 +346,7 @@ DrawIngredientEditor() {
     btnAdd := g_IngEditorGui.Add("Button", "x10 y" y " w140 h30", "Ingredient [+]")
     btnAdd.OnEvent("Click", (*) => PromptAddIngredient())
 
-    typeLabel := (g_EditTypes.Length > 0) ? "Type: " TypesStr(g_EditTypes) : "Type: None  !"
+    typeLabel := (g_EditTypes.Length > 0) ? "Type: " TypesStr(g_EditTypes) : "Type: (Required)"
     btnType := g_IngEditorGui.Add("Button", "x158 y" y " w190 h30", typeLabel)
     btnType.OnEvent("Click", (*) => ShowTypeSelector())
 
@@ -381,13 +383,14 @@ IngEdit_Handler(idx, *) {
     r2 := InputBox("Edit amount (units) for '" newName "':", "Edit Ingredient", "w300 h130", ing.amount)
     if r2.Result != "OK"
         return
-    if !IsInteger(Trim(r2.Value)) || Integer(Trim(r2.Value)) <= 0 {
+    newAmt := Trim(r2.Value)
+    if !IsInteger(newAmt) || Integer(newAmt) <= 0 {
         MsgBox("Please enter a valid positive number.", "Invalid Amount", "Icon!")
         return
     }
 
     g_EditIngredients[idx].name   := newName
-    g_EditIngredients[idx].amount := Integer(Trim(r2.Value))
+    g_EditIngredients[idx].amount := Integer(newAmt)
     DrawIngredientEditor()
 }
 
@@ -429,13 +432,14 @@ PromptAddIngredient() {
     r2 := InputBox("Enter amount (units) for '" ingName "':", "Add Ingredient", "w300 h130")
     if r2.Result != "OK" || Trim(r2.Value) = ""
         return
-    if !IsInteger(Trim(r2.Value)) || Integer(Trim(r2.Value)) <= 0 {
+    newAmt := Trim(r2.Value)
+    if !IsInteger(newAmt) || Integer(newAmt) <= 0 {
         MsgBox("Please enter a valid positive number.", "Invalid Amount", "Icon!")
         return
     }
 
     global g_EditIngredients
-    g_EditIngredients.Push({ name: ingName, amount: Integer(Trim(r2.Value)) })
+    g_EditIngredients.Push({ name: ingName, amount: Integer(newAmt) })
     DrawIngredientEditor()
 }
 
@@ -535,6 +539,7 @@ DescSave_Handler(editCtrl, *) {
     global g_EditDescription, g_DescGui
     g_EditDescription := editCtrl.Value
     g_DescGui.Destroy()
+    g_DescGui := ""
 }
 
 ; ---------- Save recipe ----------
@@ -959,6 +964,7 @@ BookDescSave_Handler(editCtrl, *) {
     g_RecipeBooks[g_CurrentBookIdx].description := editCtrl.Value
     SaveData()
     g_BookDescGui.Destroy()
+    g_BookDescGui := ""
 }
 
 ExportBook() {
