@@ -247,14 +247,16 @@ ShowHome() {
     b1 := g_MainGui.Add("Button", "x" bX " y118 w" bW " h" bH, "  Create New Recipe")
     b2 := g_MainGui.Add("Button", "x" bX " y182 w" bW " h" bH, "  Recipe Book")
     b3 := g_MainGui.Add("Button", "x" bX " y246 w" bW " h" bH, "  Import")
-    b4 := g_MainGui.Add("Button", "x" bX " y310 w" bW " h" bH, "  Credits")
+    b4 := g_MainGui.Add("Button", "x" bX " y310 w" bW " h" bH, "  Help")
+    b5 := g_MainGui.Add("Button", "x" bX " y374 w" bW " h" bH, "  Credits")
 
     b1.OnEvent("Click", (*) => ShowCreateRecipeName())
     b2.OnEvent("Click", (*) => ShowRecipeBookPage())
     b3.OnEvent("Click", (*) => ShowImport())
-    b4.OnEvent("Click", (*) => ShowCredits())
+    b4.OnEvent("Click", (*) => ShowHelp())
+    b5.OnEvent("Click", (*) => ShowCredits())
 
-    g_MainGui.Show("w600 h400")
+    g_MainGui.Show("w600 h450")
 }
 
 ; ======================================================================
@@ -1119,6 +1121,14 @@ ShowImport() {
     if skippedCount > 0
         msg .= "`nSkipped (not overwritten): " skippedCount " book(s)"
     MsgBox(msg, "Import Complete", "Iconi")
+}
+
+; ======================================================================
+; HELP
+; ======================================================================
+
+ShowHelp() {
+    MsgBox("Help guide coming soon!`n`nThis will contain detailed instructions on how to use ChemMasterPro.", "Help", "Iconi")
 }
 
 ; ======================================================================
