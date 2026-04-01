@@ -49,6 +49,7 @@ LoadData() {
         MsgBox("Error loading saved data:`n" e.Message "`n`nStarting with empty data.", "ChemMasterPro", "Iconx")
         g_RecipeBooks := []
     }
+    CreateTestRecipeBook()
 }
 
 SaveData() {
@@ -730,7 +731,7 @@ ShowRecipeBookPage() {
     btnHome.OnEvent("Click", HomeBtn_Handler)
 
     g_MainGui.SetFont("s14 Bold cFFFFFF", "Segoe UI")
-    g_MainGui.Add("Text", "x0 y12 w750 Center", "Recipe Book")
+    g_MainGui.Add("Text", "x0 y12 w850 Center", "Recipe Book")
     g_MainGui.SetFont("s10 cFFFFFF", "Segoe UI")
 
     ; ── Search & Filter ────────────────────────────────────────────────
@@ -761,7 +762,7 @@ ShowRecipeBookPage() {
 
     ; ── Book tabs ──────────────────────────────────────────────────────
     y := 86
-    g_MainGui.Add("Text", "x0 y" y " w750 h2 0x10")
+    g_MainGui.Add("Text", "x0 y" y " w850 h2 0x10")
     y += 6
 
     tx := 8
@@ -778,7 +779,7 @@ ShowRecipeBookPage() {
     }
     y += 32
 
-    g_MainGui.Add("Text", "x0 y" y " w750 h2 0x10")
+    g_MainGui.Add("Text", "x0 y" y " w850 h2 0x10")
     y += 8
 
     ; ── Recipe list ────────────────────────────────────────────────────
@@ -820,8 +821,10 @@ ShowRecipeBookPage() {
             recipeBtn.OnEvent("Click", RecipeBtn_Handler.Bind(cb, cr))
 
             btnView := g_MainGui.Add("Button", "x634 y" (y+2) " w52 h26", "View")
-            btnEdit := g_MainGui.Add("Button", "x691 y" (y+2) " w52 h26", "Edit")
+            btnExecute := g_MainGui.Add("Button", "x691 y" (y+2) " w52 h26", "Execute")
+            btnEdit := g_MainGui.Add("Button", "x748 y" (y+2) " w52 h26", "Edit")
             btnView.OnEvent("Click", ExamineRecipe_Handler.Bind(cb, cr))
+            btnExecute.OnEvent("Click", ExecuteRecipe_Handler.Bind(cb, cr))
             btnEdit.OnEvent("Click", EditRecipe_Handler.Bind(cb, cr))
 
             y += 36
@@ -830,7 +833,7 @@ ShowRecipeBookPage() {
 
     ; ── Bottom action bar ──────────────────────────────────────────────
     y += 6
-    g_MainGui.Add("Text", "x0 y" y " w750 h2 0x10")
+    g_MainGui.Add("Text", "x0 y" y " w850 h2 0x10")
     y += 8
 
     g_MainGui.SetFont("s10 cFFFFFF", "Segoe UI")
@@ -848,7 +851,7 @@ ShowRecipeBookPage() {
     btnNewBook.OnEvent("Click",    (*) => CreateNewBook())
     btnDeleteBook.OnEvent("Click", (*) => DeleteBook())
 
-    g_MainGui.Show("w750 h" (y + 55))
+    g_MainGui.Show("w850 h" (y + 55))
 }
 
 ; ---------- Recipe Book event handlers ----------
@@ -944,6 +947,10 @@ EditRecipe_Handler(bookIdx, recipeIdx, *) {
     global g_RecipeBooks
     recipe := g_RecipeBooks[bookIdx].recipes[recipeIdx]
     ShowIngredientEditor(recipe.name, true, bookIdx, recipeIdx)
+}
+
+ExecuteRecipe_Handler(bookIdx, recipeIdx, *) {
+    ExecuteRecipeFromBook(bookIdx, recipeIdx)
 }
 
 ; ---------- Book management ----------
@@ -1159,4 +1166,286 @@ ShowCredits() {
     btnClose.OnEvent("Click", (*) => credGui.Destroy())
 
     credGui.Show("w400 h245")
+}
+
+; ======================================================================
+; CHEMMASTER AUTOMATION INTEGRATION
+; ======================================================================
+
+; Config and Constants for Automation
+global g_AutoConfig := Map(
+    "offsets", Map(
+        "panel", Map("x", 0, "y", 0, "w", 612, "h", 662),
+        "listViewport", Map("x", 10, "y", 100, "w", 400, "h", 400),
+        "scrollbar", Map("x", 420, "y", 100, "w", 20, "h", 400),
+        "buttons", Map("xOffset", 450, "yOffset", 0, "width", 30, "height", 20, "spacing", 35)
+    ),
+    "buttonValues", [1, 5, 10, 15, 20, 25, 30, 50, 100, "All"]
+)
+
+global g_DebugMode := true
+global g_DryRun := true ; Set to false for actual clicking
+
+; Automation Functions
+
+FindChemMasterAnchor() {
+    ; Placeholder for image search or other anchor detection logic
+    ; Return an object with x, y, w, h
+    DebugLog("Finding ChemMaster anchor...")
+    return Map("x", 100, "y", 100, "w", 612, "h", 662) ; Example anchor - REPLACE WITH REAL IMAGE SEARCH
+}
+
+BuildChemRegions(anchor) {
+    ; Build regions relative to the anchor
+    return Map(
+        "panel", anchor,
+        "listViewport", Map("x", anchor["x"] + 10, "y", anchor["y"] + 100, "w", 400, "h", 400),
+        "scrollbar", Map("x", anchor["x"] + 420, "y", anchor["y"] + 100, "w", 20, "h", 400),
+        "buttons", Map("x", anchor["x"] + 450, "y", anchor["y"] + 100)
+    )
+}
+
+OCR_ReadRegion(region) {
+    ; Placeholder for OCR integration
+    DebugLog("OCR reading region: " region)
+    return [] ; Return an array of lines or bounding boxes - REPLACE WITH REAL OCR
+}
+
+ParseVisibleRows(ocrResult, regions) {
+    ; Parse OCR results into row objects
+    rows := []
+    for line in ocrResult {
+        ; Parse line into name and amount
+        ; Example: "oxygen: 30u"
+        name := NormalizeChemName(line.name)
+        amount := StrReplace(line.amount, "u", "")
+        rows.Push(Map("name", name, "available", amount, "rowIndex", line.index, "y", regions["listViewport"]["y"] + (line.index * 30)))
+    }
+    return rows
+}
+
+BuildRowButtonMap(rowY, regions) {
+    ; Build button click coordinates for a row
+    buttons := Map()
+    for i, value in g_AutoConfig["buttonValues"] {
+        buttons[value] := Map("x", regions["buttons"]["x"] + (i - 1) * g_AutoConfig["offsets"]["buttons"]["spacing"], "y", rowY)
+    }
+    return buttons
+}
+
+NormalizeChemName(name) {
+    ; Normalize OCR text for matching
+    return StrLower(StrReplace(name, " ", ""))
+}
+
+FuzzyMatchChem(target, scannedNames) {
+    ; Placeholder for fuzzy matching logic
+    for name in scannedNames {
+        if (InStr(name, target)) {
+            return name
+        }
+    }
+    return ""
+}
+
+ScrollList(regions, steps := 1) {
+    ; Scroll the list region
+    MouseMove(regions["listViewport"]["x"] + 10, regions["listViewport"]["y"] + 10)
+    Loop steps {
+        SendInput("{WheelDown}")
+        Sleep(100)
+    }
+}
+
+ScanAllChemicals(anchor, maxPasses := 50) {
+    ; Scan all chemicals in the list
+    regions := BuildChemRegions(anchor)
+    masterMap := {}
+    pass := 0
+    while pass < maxPasses {
+        visibleRows := ParseVisibleRows(OCR_ReadRegion(regions["listViewport"]), regions)
+        MergeScannedRows(masterMap, visibleRows)
+        if (visibleRows.Length = 0) ; No new rows found
+            break
+        ScrollList(regions)
+        pass++
+    }
+    return masterMap
+}
+
+MergeScannedRows(masterMap, visibleRows) {
+    ; Merge visible rows into the master map
+    for row in visibleRows {
+        masterMap[row.name] := row.available
+    }
+}
+
+RecipeCanBeMade(recipe, chemicalMap) {
+    ; Check if the recipe can be made
+    for chem, amount in recipe {
+        if (!chemicalMap.HasKey(chem) || chemicalMap[chem] < amount) {
+            return false
+        }
+    }
+    return true
+}
+
+DecomposeAmount(amount) {
+    ; Decompose amount into button clicks
+    buttons := []
+    for value in g_AutoConfig["buttonValues"] {
+        while (amount >= value) {
+            buttons.Push(value)
+            amount -= value
+        }
+    }
+    return buttons
+}
+
+FindVisibleRowForChemical(targetChem, visibleRows) {
+    ; Find the visible row for a chemical
+    for row in visibleRows {
+        if (row.name = targetChem) {
+            return row
+        }
+    }
+    return ""
+}
+
+EnsureChemicalVisible(targetChem, anchor, maxSearchSteps := 50) {
+    ; Ensure the target chemical is visible
+    regions := BuildChemRegions(anchor)
+    pass := 0
+    while pass < maxSearchSteps {
+        visibleRows := ParseVisibleRows(OCR_ReadRegion(regions["listViewport"]), regions)
+        row := FindVisibleRowForChemical(targetChem, visibleRows)
+        if (row != "") {
+            return row
+        }
+        ScrollList(regions)
+        pass++
+    }
+    return ""
+}
+
+ClickAmountOnRow(row, amount, regions) {
+    ; Click the required amounts on a row
+    buttons := DecomposeAmount(amount)
+    for value in buttons {
+        coords := row.buttons[value]
+        if (g_DryRun) {
+            DebugLog("DRY RUN: Clicking " value " at " coords.x ", " coords.y)
+        } else {
+            MouseClick("Left", coords.x, coords.y)
+            Sleep(100)
+        }
+    }
+}
+
+ExecuteRecipe(recipe, anchor) {
+    ; Execute the recipe
+    chemicalMap := ScanAllChemicals(anchor)
+    if (!RecipeCanBeMade(recipe, chemicalMap)) {
+        MsgBox("Recipe cannot be made. Missing ingredients.", "Automation Error", "Icon!")
+        return
+    }
+    for chem, amount in recipe {
+        row := EnsureChemicalVisible(chem, anchor)
+        if (row = "") {
+            MsgBox("Chemical " chem " not found.", "Automation Error", "Icon!")
+            return
+        }
+        ClickAmountOnRow(row, amount, BuildChemRegions(anchor))
+    }
+    MsgBox("Recipe executed successfully!", "Automation Complete", "Iconi")
+}
+
+DebugLog(msg) {
+    if (g_DebugMode) {
+        if (IsObject(msg) && msg is Map) {
+            ; Convert Map to string representation
+            str := "{"
+            for key, value in msg {
+                str .= key ": " value ", "
+            }
+            str := RTrim(str, ", ") "}"
+            ToolTip(str)
+        } else {
+            ToolTip(msg)
+        }
+        Sleep(1000)
+        ToolTip("")
+    }
+}
+
+DebugShowRegion(region, label := "") {
+    if (g_DebugMode) {
+        ToolTip(label ": " region.x ", " region.y ", " region.w ", " region.h)
+        Sleep(1000)
+        ToolTip("")
+    }
+}
+
+DebugClickPoint(x, y, label := "") {
+    if (g_DebugMode) {
+        ToolTip(label ": " x ", " y)
+        Sleep(1000)
+        ToolTip("")
+    }
+}
+
+; ======================================================================
+; INTEGRATION WITH RECIPE BOOK
+; ======================================================================
+
+; Modify ShowRecipeBookPage to include Execute buttons
+; (This will be integrated into the existing function)
+
+; Add test recipe book if none exists
+CreateTestRecipeBook() {
+    global g_RecipeBooks
+    if g_RecipeBooks.Length > 0
+        return ; Already have books
+
+    testBook := {
+        name: "Test Recipe Book",
+        description: "Book for testing automation",
+        recipes: [{
+            name: "test1",
+            description: "Test recipe: 10 potassium, 10 chlorine, 10 nitrogen (brute)",
+            types: ["brute"],
+            ingredients: [
+                { name: "potassium", amount: 10 },
+                { name: "chlorine", amount: 10 },
+                { name: "nitrogen", amount: 10 }
+            ],
+            totalAmount: 30
+        }]
+    }
+    g_RecipeBooks.Push(testBook)
+    SaveData()
+}
+
+; Call this in LoadData or startup
+CreateTestRecipeBook()
+
+; Function to execute a recipe from the book
+ExecuteRecipeFromBook(bookIdx, recipeIdx) {
+    global g_RecipeBooks
+    recipe := g_RecipeBooks[bookIdx].recipes[recipeIdx]
+
+    ; Convert ingredients to Map for automation
+    recipeMap := Map()
+    for ing in recipe.ingredients {
+        recipeMap[NormalizeChemName(ing.name)] := ing.amount
+    }
+
+    ; Find ChemMaster and execute
+    anchor := FindChemMasterAnchor()
+    if (anchor["x"] = 0 && anchor["y"] = 0) {
+        MsgBox("ChemMaster not found on screen. Make sure the game is visible.", "Automation Error", "Icon!")
+        return
+    }
+
+    ExecuteRecipe(recipeMap, anchor)
 }
