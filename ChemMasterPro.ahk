@@ -1261,7 +1261,7 @@ ScrollList(regions, steps := 1) {
 ScanAllChemicals(anchor, maxPasses := 50) {
     ; Scan all chemicals in the list
     regions := BuildChemRegions(anchor)
-    masterMap := {}
+    masterMap := Map()
     pass := 0
     while pass < maxPasses {
         visibleRows := ParseVisibleRows(OCR_ReadRegion(regions["listViewport"]), regions)
