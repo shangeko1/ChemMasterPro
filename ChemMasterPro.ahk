@@ -1207,7 +1207,8 @@ BuildChemRegions(anchor) {
 
 OCR_ReadRegion(region) {
     ; Placeholder for OCR integration
-    DebugLog("OCR reading region: " region)
+    DebugLog("OCR reading region:")
+    DebugLog(region)
     return [] ; Return an array of lines or bounding boxes - REPLACE WITH REAL OCR
 }
 
@@ -1334,9 +1335,9 @@ ClickAmountOnRow(row, amount, regions) {
     for value in buttons {
         coords := row.buttons[value]
         if (g_DryRun) {
-            DebugLog("DRY RUN: Clicking " value " at " coords.x ", " coords.y)
+            DebugLog("DRY RUN: Clicking " value " at " coords["x"] ", " coords["y"])
         } else {
-            MouseClick("Left", coords.x, coords.y)
+            MouseClick("Left", coords["x"], coords["y"])
             Sleep(100)
         }
     }
@@ -1380,7 +1381,7 @@ DebugLog(msg) {
 
 DebugShowRegion(region, label := "") {
     if (g_DebugMode) {
-        ToolTip(label ": " region.x ", " region.y ", " region.w ", " region.h)
+        ToolTip(label ": " region["x"] ", " region["y"] ", " region["w"] ", " region["h"])
         Sleep(1000)
         ToolTip("")
     }
