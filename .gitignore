@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Debug output from vision helper
+debug/
+*.overlay.png
+*.panel_crop.png
+
+# Test images (user-supplied; not committed)
+test_images/
+
+# Temp files
+*.tmp
+vision_result_*.json
